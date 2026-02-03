@@ -37,14 +37,14 @@ export class AnalysisService {
         changePercent: stock.changePercent,
         volume: stock.volume,
         marketCap: stock.marketCap,
-        sector: stock.sector,
+        sector: stock.sector as string,
         trend: analysis.direction,
         momentum: analysis.momentum,
         momentumScore: analysis.momentumScore,
         sentimentScore: analysis.sentiment.overall,
         rsi: analysis.technical.rsi,
         signals: analysis.signals,
-      };
+      } as ScreenerResult;
     }).filter((r): r is ScreenerResult => r !== null);
 
     // Apply filters

@@ -1,4 +1,4 @@
-import type { Job, JobType, JobStatus, JobPriority, JobStats } from '../types/index.js';
+import type { Job, JobType, JobPriority, JobStats } from '../types/index.js';
 
 type JobHandler = (job: Job) => Promise<Record<string, unknown>>;
 

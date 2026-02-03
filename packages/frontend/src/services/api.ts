@@ -52,9 +52,9 @@ export const stockApi = {
       return {
         success: true,
         data: Array.isArray(data) ? data : data.data,
-      };
+      } as ApiResponse<Stock[]>;
     }
-    return result as ApiResponse<Stock[]>;
+    return { success: false, error: result.error } as ApiResponse<Stock[]>;
   },
 
   getBySymbol: (symbol: string) => {
@@ -81,9 +81,9 @@ export const movementApi = {
       return {
         success: true,
         data: Array.isArray(data) ? data : data.data,
-      };
+      } as ApiResponse<MovementPrediction[]>;
     }
-    return result as ApiResponse<MovementPrediction[]>;
+    return { success: false, error: result.error } as ApiResponse<MovementPrediction[]>;
   },
 };
 
@@ -108,9 +108,9 @@ export const screenerApi = {
       return {
         success: true,
         data: Array.isArray(data) ? data : data.data,
-      };
+      } as ApiResponse<Stock[]>;
     }
-    return result as ApiResponse<Stock[]>;
+    return { success: false, error: result.error } as ApiResponse<Stock[]>;
   },
 };
 

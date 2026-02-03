@@ -184,7 +184,7 @@ function generateFactors(
 
 function generateScenarios(
   stock: typeof mockStocks[0],
-  analysis: ReturnType<typeof getAnalysis>,
+  _analysis: ReturnType<typeof getAnalysis>,
   criteria: InvestmentCriteria,
   probabilityScore: number
 ): ProfitScenario[] {

@@ -1,6 +1,6 @@
-import type { Stock, Sector, MarketCapCategory } from '../types/index.js';
+import type { Stock, MarketCapCategory } from '../types/index.js';
 
-function getMarketCapCategory(marketCap: number): MarketCapCategory {
+export function getMarketCapCategory(marketCap: number): MarketCapCategory {
   if (marketCap >= 200_000_000_000) return 'mega';
   if (marketCap >= 10_000_000_000) return 'large';
   if (marketCap >= 2_000_000_000) return 'mid';
