@@ -1,0 +1,30 @@
+{
+  "name": "stock-screener",
+  "version": "1.0.0",
+  "description": "Full-stack stock screening application with trend analysis and movement predictions",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "npm run dev -w @stock-screener/backend",
+    "dev:frontend": "npm run dev -w @stock-screener/frontend",
+    "build": "npm run build -w @stock-screener/backend && npm run build -w @stock-screener/frontend",
+    "build:backend": "npm run build -w @stock-screener/backend",
+    "build:frontend": "npm run build -w @stock-screener/frontend",
+    "start": "npm run start -w @stock-screener/backend",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "clean": "rm -rf packages/*/dist packages/*/node_modules node_modules"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "author": "",
+  "license": "MIT"
+}
