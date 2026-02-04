@@ -8,6 +8,7 @@
  * - Error handling and fallbacks
  */
 
+import { config } from '../config.js';
 import {
   quoteCache,
   profileCache,
@@ -109,12 +110,14 @@ class FinnhubProvider {
   private readonly MIN_REQUEST_DELAY_MS = 100;
 
   constructor() {
-    this.apiKey = process.env.FINNHUB_API_KEY ?? '';
+    this.apiKey = config.finnhubApiKey;
 
     if (!this.apiKey) {
       console.warn(
         '[FinnhubProvider] FINNHUB_API_KEY not set. API calls will fail.'
       );
+    } else {
+      console.log('[FinnhubProvider] API key configured');
     }
   }
 

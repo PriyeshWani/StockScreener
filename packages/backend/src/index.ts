@@ -1,4 +1,5 @@
-import 'dotenv/config';
+// Config MUST be imported first to load environment variables
+import { config } from './config.js';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -17,13 +18,13 @@ import {
 import { stockService } from './services/stockService.js';
 
 const app = express();
-const PORT = process.env.PORT ?? 3001;
+const PORT = config.port;
 
 // Middleware
 app.use(helmet());
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN ?? 'http://localhost:5173',
+    origin: config.corsOrigin,
     credentials: true,
   })
 );

@@ -6,6 +6,7 @@ import type {
   Sector,
   MarketCapCategory,
 } from '../types/index.js';
+import { config as appConfig } from '../config.js';
 import { mockStocks, getStockBySymbol } from '../data/mockStocks.js';
 import {
   finnhubProvider,
@@ -25,30 +26,17 @@ interface StockServiceConfig {
 
 /**
  * Get the list of default tracked symbols.
- * These are popular stocks that will be fetched from Finnhub.
+ * Limited to 10 symbols for free tier rate limits (60 calls/min).
+ * Each symbol needs ~2 calls (quote + profile), so 10 symbols = ~20 calls.
  */
 function getDefaultTrackedSymbols(): string[] {
   return [
-    // Mega-cap tech
-    'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'META', 'TSLA',
-    // Finance
-    'JPM', 'V', 'MA', 'BAC', 'WFC',
-    // Healthcare
-    'JNJ', 'UNH', 'PFE', 'ABBV', 'MRK', 'LLY',
-    // Consumer
-    'PG', 'KO', 'PEP', 'COST', 'WMT', 'HD',
-    // Energy
-    'XOM', 'CVX',
-    // Communication
-    'DIS', 'NFLX', 'CMCSA',
-    // Industrials
-    'CAT', 'BA', 'UPS',
-    // Semiconductors
-    'AMD', 'INTC', 'QCOM',
-    // Software
-    'CRM', 'ADBE', 'ORCL',
-    // Mid-cap growth
-    'SNAP', 'ROKU', 'SQ', 'ZM', 'ETSY',
+    // Top tech stocks (diverse sectors)
+    'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA',
+    // Finance & Healthcare
+    'JPM', 'JNJ',
+    // Consumer & Energy
+    'WMT', 'XOM', 'DIS',
   ];
 }
 
@@ -89,10 +77,8 @@ export class StockService {
   private readonly DATA_REFRESH_INTERVAL = 30 * 1000; // 30 seconds
 
   constructor(config?: Partial<StockServiceConfig>) {
-    const useRealData = process.env.USE_REAL_DATA === 'true';
-
     this.config = {
-      useRealData: config?.useRealData ?? useRealData,
+      useRealData: config?.useRealData ?? appConfig.useRealData,
       trackedSymbols: config?.trackedSymbols ?? getDefaultTrackedSymbols(),
     };
 
