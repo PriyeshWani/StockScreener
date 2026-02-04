@@ -9,6 +9,7 @@ import type {
 import { config as appConfig } from '../config.js';
 import { mockStocks, getStockBySymbol } from '../data/mockStocks.js';
 import { yahooFinanceProvider, type YahooQuote } from './yahooFinanceProvider.js';
+import { finnhubProvider } from './finnhubProvider.js';
 
 /**
  * Configuration for the stock service data source.
@@ -54,12 +55,23 @@ function mapToSector(sector?: string): Sector {
   return sectorMap[sector] ?? 'Technology';
 }
 
+// Sector cache entry
+interface SectorCacheEntry {
+  sector: Sector;
+  industry: string;
+  fetchedAt: number;
+}
+
 export class StockService {
   private config: StockServiceConfig;
   private stockDataCache: Map<string, Stock> = new Map();
+  private sectorCache: Map<string, SectorCacheEntry> = new Map();
   private lastDataRefresh: number = 0;
+  private lastSectorRefresh: number = 0;
   private readonly DATA_REFRESH_INTERVAL = 30 * 1000; // 30 seconds
+  private readonly SECTOR_REFRESH_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
   private dataSource: 'yahoo' | 'mock' = 'mock';
+  private sectorFetchInProgress = false;
 
   constructor(config?: Partial<StockServiceConfig>) {
     const defaultSymbols = yahooFinanceProvider.getDefaultSymbols();
@@ -71,7 +83,7 @@ export class StockService {
 
     // Log configuration
     console.log(
-      `[StockService] Initialized with ${this.config.useRealData ? 'REAL (Yahoo Finance)' : 'MOCK'} data mode`
+      `[StockService] Initialized with ${this.config.useRealData ? 'REAL (Yahoo Finance + Finnhub sectors)' : 'MOCK'} data mode`
     );
     console.log(
       `[StockService] Tracking ${this.config.trackedSymbols.length} symbols`
@@ -88,16 +100,99 @@ export class StockService {
       return;
     }
 
-    console.log('[StockService] Initializing and prefetching data from Yahoo Finance...');
+    console.log('[StockService] Initializing...');
 
     try {
+      // Fetch price data from Yahoo Finance (fast, no rate limits)
       await this.refreshStockData();
+
+      // Fetch sector data from Finnhub (rate-limited, but cached 24h)
+      // Run in background to not block startup
+      this.fetchSectorDataInBackground();
+
       console.log('[StockService] Initialization complete');
     } catch (error) {
       console.error('[StockService] Initialization failed:', error);
       console.log('[StockService] Falling back to mock data');
       this.dataSource = 'mock';
     }
+  }
+
+  /**
+   * Fetch sector data from Finnhub in the background.
+   * This is rate-limited (60/min) so we fetch gradually.
+   */
+  private async fetchSectorDataInBackground(): Promise<void> {
+    if (this.sectorFetchInProgress) return;
+    if (!finnhubProvider.isConfigured()) {
+      console.log('[StockService] Finnhub not configured, using default sectors');
+      return;
+    }
+
+    const now = Date.now();
+    if (now - this.lastSectorRefresh < this.SECTOR_REFRESH_INTERVAL && this.sectorCache.size > 0) {
+      console.log('[StockService] Sector cache still valid, skipping refresh');
+      return;
+    }
+
+    this.sectorFetchInProgress = true;
+    console.log('[StockService] Fetching sector data from Finnhub (background)...');
+
+    const symbolsToFetch = this.config.trackedSymbols.filter(
+      (s) => !this.sectorCache.has(s)
+    );
+
+    if (symbolsToFetch.length === 0) {
+      console.log('[StockService] All sectors already cached');
+      this.sectorFetchInProgress = false;
+      return;
+    }
+
+    // Fetch in small batches to respect rate limits (60/min)
+    // Fetch 5 at a time with 6-second gaps = 50/min
+    const batchSize = 5;
+    const batchDelay = 6000; // 6 seconds between batches
+    let fetched = 0;
+
+    for (let i = 0; i < symbolsToFetch.length; i += batchSize) {
+      const batch = symbolsToFetch.slice(i, i + batchSize);
+
+      const profiles = await finnhubProvider.getCompanyProfiles(batch);
+
+      for (const [symbol, profile] of profiles) {
+        this.sectorCache.set(symbol, {
+          sector: mapToSector(profile.sector),
+          industry: profile.industry,
+          fetchedAt: now,
+        });
+
+        // Update existing stock in cache with correct sector
+        const existingStock = this.stockDataCache.get(symbol);
+        if (existingStock) {
+          existingStock.sector = mapToSector(profile.sector);
+          existingStock.industry = profile.industry;
+        }
+      }
+
+      fetched += profiles.size;
+      console.log(`[StockService] Fetched sectors: ${fetched}/${symbolsToFetch.length}`);
+
+      // Wait between batches (except for last batch)
+      if (i + batchSize < symbolsToFetch.length) {
+        await this.sleep(batchDelay);
+      }
+    }
+
+    this.lastSectorRefresh = now;
+    this.sectorFetchInProgress = false;
+    console.log(`[StockService] Sector fetch complete: ${this.sectorCache.size} sectors cached`);
+  }
+
+  /**
+   * Helper to sleep for a given number of milliseconds.
+   */
+  private sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   /**
@@ -133,11 +228,16 @@ export class StockService {
 
   /**
    * Build a Stock object from Yahoo Finance quote.
+   * Uses sector from Finnhub cache if available, otherwise defaults.
    */
   private buildStockFromYahooQuote(quote: YahooQuote): Stock {
     const marketCap = quote.marketCap ?? 0;
     const marketCapCategory = getMarketCapCategory(marketCap);
-    const sector = mapToSector(quote.sector);
+
+    // Check sector cache first (populated from Finnhub)
+    const cachedSector = this.sectorCache.get(quote.symbol);
+    const sector = cachedSector?.sector ?? mapToSector(quote.sector);
+    const industry = cachedSector?.industry ?? quote.industry ?? '';
 
     return {
       symbol: quote.symbol,
@@ -151,7 +251,7 @@ export class StockService {
       marketCap,
       marketCapCategory,
       sector,
-      industry: quote.industry ?? '',
+      industry,
       exchange: quote.exchange ?? 'NASDAQ',
       high52Week: quote.fiftyTwoWeekHigh ?? 0,
       low52Week: quote.fiftyTwoWeekLow ?? 0,
