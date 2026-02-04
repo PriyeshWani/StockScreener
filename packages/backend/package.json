@@ -17,6 +17,7 @@
     "express": "^4.18.2",
     "helmet": "^7.1.0",
     "morgan": "^1.10.0",
+    "yahoo-finance2": "^3.13.0",
     "zod": "^3.22.4"
   },
   "devDependencies": {

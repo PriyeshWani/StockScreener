@@ -105,8 +105,8 @@ export class StockController {
         success: true,
         ...result,
         meta: {
-          dataSource: stockService.isUsingRealData() ? 'finnhub' : 'mock',
-          rateLimit: stockService.getRateLimitStatus(),
+          dataSource: stockService.getDataSource(),
+          trackedSymbols: stockService.getTrackedSymbols().length,
         },
       });
     } catch (error) {
@@ -140,7 +140,7 @@ export class StockController {
         success: true,
         data: stock,
         meta: {
-          dataSource: stockService.isUsingRealData() ? 'finnhub' : 'mock',
+          dataSource: stockService.getDataSource(),
         },
       });
     } catch (error) {
@@ -184,18 +184,21 @@ export class StockController {
 
   /**
    * GET /api/stocks/meta/status
-   * Get service status including rate limit info
+   * Get service status
    */
   getStatus = (_req: Request, res: Response, next: NextFunction): void => {
     try {
-      const rateLimitStatus = stockService.getRateLimitStatus();
+      const cacheStats = stockService.getCacheStats();
 
       res.json({
         success: true,
         data: {
-          dataSource: stockService.isUsingRealData() ? 'finnhub' : 'mock',
+          dataSource: stockService.getDataSource(),
           trackedSymbols: stockService.getTrackedSymbols().length,
-          rateLimit: rateLimitStatus,
+          cachedStocks: cacheStats.size,
+          lastRefresh: cacheStats.lastRefresh
+            ? new Date(cacheStats.lastRefresh).toISOString()
+            : null,
         },
       });
     } catch (error) {

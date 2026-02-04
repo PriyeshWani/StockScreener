@@ -1,6 +1,7 @@
-import type { TrendAnalysis, ScreenerFilters, ScreenerResult, PaginatedResponse } from '../types/index.js';
+import type { TrendAnalysis, ScreenerFilters, ScreenerResult, PaginatedResponse, Stock } from '../types/index.js';
 import { getAnalysis, getAllAnalysis, refreshAnalysis } from '../data/mockAnalysis.js';
 import { mockStocks } from '../data/mockStocks.js';
+import { stockService } from './stockService.js';
 
 export class AnalysisService {
   /**
@@ -20,13 +21,26 @@ export class AnalysisService {
   /**
    * Run screener with filters
    */
-  runScreener(filters: ScreenerFilters): PaginatedResponse<ScreenerResult> {
+  async runScreener(filters: ScreenerFilters): Promise<PaginatedResponse<ScreenerResult>> {
     // Get all stocks with their analysis
     const allAnalysis = getAllAnalysis();
 
+    // Get real stock data if available
+    let realStocks: Map<string, Stock> = new Map();
+    if (stockService.isUsingRealData()) {
+      const stocksResponse = await stockService.getStocks({});
+      for (const stock of stocksResponse.data) {
+        realStocks.set(stock.symbol, stock as Stock);
+      }
+    }
+
     // Combine stock data with analysis
     let results: ScreenerResult[] = allAnalysis.map(analysis => {
-      const stock = mockStocks.find(s => s.symbol === analysis.symbol);
+      // Try to get real stock data first, fall back to mock
+      const realStock = realStocks.get(analysis.symbol);
+      const mockStock = mockStocks.find(s => s.symbol === analysis.symbol);
+      const stock = realStock ?? mockStock;
+
       if (!stock) return null;
 
       return {

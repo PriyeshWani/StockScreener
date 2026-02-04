@@ -98,10 +98,10 @@ export class AnalysisController {
    * GET /api/screener
    * Run screener with custom filters
    */
-  runScreener = (req: Request, res: Response, next: NextFunction): void => {
+  runScreener = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const filters = screenerFiltersSchema.parse(req.query);
-      const result = analysisService.runScreener(filters);
+      const result = await analysisService.runScreener(filters);
 
       res.json({
         success: true,
